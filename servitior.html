@@ -5,111 +5,135 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вики - Виртуален сервитьор</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f0f8ff; margin: 0; padding: 20px; color: #333; }
-        img { max-width: 300px; height: auto; border-radius: 20px; margin: 20px 0; }
-        h1 { margin: 10px 0 5px; font-size: 28px; }
-        button { font-size: 24px; padding: 18px 45px; background: #4CAF50; color: white; border: none; border-radius: 15px; margin: 20px 0; }
-        .status { font-size: 20px; margin: 15px; font-weight: bold; color: #1976D2; }
-        .box { background: white; padding: 15px; margin: 12px auto; max-width: 500px; border-radius: 10px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background: #f0f8ff; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        img { max-width: 250px; height: auto; border-radius: 20px; margin: 20px 0; }
+        h1 { margin: 10px 0 5px; font-size: 28px; color: #2e7d32; }
+        button { font-size: 22px; padding: 15px 40px; background: #4CAF50; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        button:active { background: #388E3C; transform: translateY(2px); }
+        .status { font-size: 18px; margin: 15px; font-weight: bold; color: #1976D2; min-height: 25px; }
+        .box { background: #f9f9f9; padding: 15px; margin: 12px auto; border-radius: 10px; text-align: left; border-left: 5px solid #4CAF50; }
+        strong { color: #555; display: block; margin-bottom: 5px; }
     </style>
 </head>
 <body>
+
+<div class="container">
     <h1>👋 Здравейте! Аз съм Вики</h1>
     <p>Вашият виртуален сервитьор</p>
     
     <img src="https://i.ibb.co/0jZ8v3k/waitress.png" alt="Вики">
 
+    <br>
     <button onclick="startListening()">🎤 Говори с мен</button>
     
-    <div class="status" id="status">Готова съм...</div>
+    <div class="status" id="status">Готова съм да приема поръчка...</div>
     
     <div class="box">
-        <strong>Чух:</strong><br>
-        <span id="heard"></span>
+        <strong>Чух:</strong>
+        <span id="heard" style="color: #666;">...</span>
     </div>
     
     <div class="box">
-        <strong>Отговор:</strong><br>
-        <span id="response"></span>
+        <strong>Вики отговаря:</strong>
+        <span id="response" style="color: #2e7d32; font-weight: bold;">...</span>
     </div>
+</div>
 
-    <script>
-        const statusEl = document.getElementById('status');
-        const heardEl = document.getElementById('heard');
-        const responseEl = document.getElementById('response');
+<script>
+    const statusEl = document.getElementById('status');
+    const heardEl = document.getElementById('heard');
+    const responseEl = document.getElementById('response');
 
-        const GEMINI_KEY = "AIzaSyDz8HVkb8_1_hwdOe2BKDjowr14ovxA-fk";   // твоят ключ
+    // ВНИМАНИЕ: Увери се, че тук няма интервали в кавичките!
+    const GEMINI_KEY = "СЛОЖИ_ТУК_ТВОЯ_КЛЮЧ_БЕЗ_ИНТЕРВАЛИ"; 
 
-        function startListening() {
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const rec = new SR();
-            rec.lang = 'bg-BG';
-
-            statusEl.textContent = "🎤 Слушам...";
-
-            rec.onresult = (e) => {
-                const text = e.results[0][0].transcript.trim();
-                heardEl.textContent = text;
-                sendToGemini(text);
-            };
-
-            rec.start();
+    function startListening() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            alert("Браузърът не поддържа гласово разпознаване.");
+            return;
         }
+        const rec = new SR();
+        rec.lang = 'bg-BG';
 
-        async function sendToGemini(userText) {
-            statusEl.textContent = "🤔 Мисля...";
+        rec.onstart = () => {
+            statusEl.textContent = "🎤 Слушам те...";
+        };
 
-            const prompt = `Ти си Вики - приятна и професионална сервитьорка в ресторант. Говориш на български, кратко и любезно.
+        rec.onresult = (e) => {
+            const text = e.results[0][0].transcript.trim();
+            heardEl.textContent = text;
+            sendToGemini(text);
+        };
 
-Меню:
-- Шопска салата – 8.90 лв.
-- Пилешка супа – 6.50 лв. (с фиде)
-- Цезар салата – 11.90 лв.
-- Пържола свинско – 19.90 лв.
-- Пиле на скара – 14.50 лв.
-- Веган боул – 12.90 лв.
-- Спагети Болонезе – 13.90 лв.
-- Паста с морски дарове – 17.90 лв.
-- Тирамису – 7.50 лв.
-- Домашна лимонада – 4.50 лв.
+        rec.onerror = (event) => {
+            console.error(event.error);
+            statusEl.textContent = "Опа, не те чух. Пробвай пак!";
+        };
 
-Ако клиентът иска меню - покажи го.
-Ако прави поръчка - повтори я и попитай дали е правилна.
-Ако каже "да" или "потвърждавам" - кажи че поръчката е приета.
-Ако каже "извикай сервитьор" или "помощ" - кажи че ще извикаш човек.
+        rec.start();
+    }
 
-Клиентът каза: ${userText}
+    async function sendToGemini(userText) {
+        statusEl.textContent = "🤔 Вики мисли...";
 
-Отговори само като Вики, кратко и естествено.`;
+        const prompt = `Ти си Вики - приятна и професионална сервитьорка. 
+        ГОВОРИ САМО НА БЪЛГАРСКИ!
+        
+        МЕНЮ:
+        - Шопска салата (8.90 лв)
+        - Пилешка супа (6.50 лв)
+        - Цезар салата (11.90 лв)
+        - Пържола свинско (19.90 лв)
+        - Домашна лимонада (4.50 лв)
 
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
+        ИНСТРУКЦИИ:
+        1. Отговаряй кратко и любезно.
+        2. Когато някой поръча нещо, потвърди поръчката.
+        3. СЛЕД ВСЯКА ПОРЪЧКА питай "Желаете ли още нещо или някой друг на масата иска да поръча?".
+        4. САМО ако клиентът каже, че това е всичко, кажи "Благодаря! Поръчката е приета и изпратена!".
 
-                const data = await res.json();
-                let answer = data.candidates[0].content.parts[0].text.trim();
+        Клиентът каза: "${userText}"`;
 
-                responseEl.textContent = answer;
-                statusEl.textContent = "Готово!";
-                speak(answer);
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
 
-            } catch (err) {
-                responseEl.textContent = "Извинявайте, имам малък проблем. Ей сега ще извикам истински сервитьор!";
-                speak("Извинявайте, имам малък проблем.");
-                statusEl.textContent = "Грешка";
+            const data = await res.json();
+            
+            if (data.error) {
+                throw new Error(data.error.message);
             }
-        }
 
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'bg-BG';
-            speechSynthesis.speak(utterance);
+            const answer = data.candidates[0].content.parts[0].text.trim();
+            responseEl.textContent = answer;
+            statusEl.textContent = "Вики отговори:";
+            speak(answer);
+
+        } catch (err) {
+            console.error(err);
+            responseEl.textContent = "Извинявай, имам проблем с връзката. Може ли да повториш?";
+            statusEl.textContent = "Грешка!";
         }
-    </script>
+    }
+
+    function speak(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'bg-BG';
+        
+        // Автоматично пуска слушането отново след като Вики свърши да говори
+        utterance.onend = () => {
+            setTimeout(startListening, 1000);
+        };
+        
+        window.speechSynthesis.speak(utterance);
+    }
+</script>
 </body>
 </html>
