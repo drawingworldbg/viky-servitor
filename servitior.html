@@ -5,135 +5,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вики - Виртуален сервитьор</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background: #f0f8ff; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        img { max-width: 250px; height: auto; border-radius: 20px; margin: 20px 0; }
-        h1 { margin: 10px 0 5px; font-size: 28px; color: #2e7d32; }
-        button { font-size: 22px; padding: 15px 40px; background: #4CAF50; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        button:active { background: #388E3C; transform: translateY(2px); }
-        .status { font-size: 18px; margin: 15px; font-weight: bold; color: #1976D2; min-height: 25px; }
-        .box { background: #f9f9f9; padding: 15px; margin: 12px auto; border-radius: 10px; text-align: left; border-left: 5px solid #4CAF50; }
-        strong { color: #555; display: block; margin-bottom: 5px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #f0f8ff; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { margin: 10px 0 5px; font-size: 32px; color: #2e7d32; }
+        p { color: #666; margin-bottom: 20px; }
+        
+        /* Стил за картинката */
+        .avatar-container { margin: 20px auto; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; border: 6px solid #4CAF50; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        button { font-size: 22px; padding: 18px 45px; background: #4CAF50; color: white; border: none; border-radius: 50px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
+        button:hover { background: #45a049; transform: scale(1.05); }
+        button:active { transform: scale(0.98); }
+
+        .status { font-size: 18px; margin: 20px; font-weight: bold; color: #1976D2; min-height: 24px; }
+        
+        .box { background: #f9f9f9; padding: 15px; margin: 15px auto; border-radius: 15px; text-align: left; border-left: 6px solid #4CAF50; }
+        .label { font-size: 12px; text-transform: uppercase; color: #888; font-weight: bold; margin-bottom: 5px; }
+        .text-content { font-size: 18px; line-height: 1.5; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>👋 Здравейте! Аз съм Вики</h1>
+    <h1>👋 Аз съм Вики</h1>
     <p>Вашият виртуален сервитьор</p>
     
-    <img src="https://i.ibb.co/0jZ8v3k/waitress.png" alt="Вики">
+    <div class="avatar-container">
+        <img src="https://img.freepik.com/free-vector/waitress-concept-illustration_114360-19213.jpg" alt="Вики">
+    </div>
 
-    <br>
     <button onclick="startListening()">🎤 Говори с мен</button>
     
-    <div class="status" id="status">Готова съм да приема поръчка...</div>
+    <div class="status" id="status">Натисни бутона и поръчай</div>
     
     <div class="box">
-        <strong>Чух:</strong>
-        <span id="heard" style="color: #666;">...</span>
+        <div class="label">Ти каза:</div>
+        <div id="heard" class="text-content">...</div>
     </div>
     
     <div class="box">
-        <strong>Вики отговаря:</strong>
-        <span id="response" style="color: #2e7d32; font-weight: bold;">...</span>
+        <div class="label">Вики отговаря:</div>
+        <div id="response" class="text-content" style="color:#2e7d32; font-weight: 500;">...</div>
     </div>
 </div>
 
 <script>
+    // --- ОСНОВНИ НАСТРОЙКИ ---
+    const GEMINI_KEY = "AIzaSyDz8HVkb8_1_hwdOe2BKDjowr14ovxA-fk"; // <--- ЗАМЕНИ ТУК (внимавай да няма интервали!)
+    const MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
     const statusEl = document.getElementById('status');
     const heardEl = document.getElementById('heard');
     const responseEl = document.getElementById('response');
 
-    // ВНИМАНИЕ: Увери се, че тук няма интервали в кавичките!
-    const GEMINI_KEY = "AIzaSyDz8HVkb8_1_hwdOe2BKDjowr14ovxA-fk"; 
+    // Инструкции за Вики
+    const systemPrompt = `Ти си Вики - любезна сервитьорка. 
+    МЕНЮ: Шопска салата (8.90 лв), Пилешка супа (6.50 лв), Цезар (11.90 лв), Пържола (19.90 лв), Пиле на скара (14.50 лв), Веган боул (12.90 лв), Спагети (13.90 лв), Тирамису (7.50 лв), Лимонада (4.50 лв).
+    
+    ПРАВИЛА:
+    1. ГОВОРИ САМО НА БЪЛГАРСКИ.
+    2. Потвърждавай поръчката и винаги питай "Желаете ли още нещо или някой друг на масата иска да поръча?".
+    3. Приеми поръчката ОКОНЧАТЕЛНО само ако клиентът каже, че е готов или няма повече поръчки.
+    4. Отговаряй кратко и професионално.`;
 
     function startListening() {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) {
-            alert("Браузърът не поддържа гласово разпознаване.");
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Браузърът Ви не поддържа гласово разпознаване.");
             return;
         }
-        const rec = new SR();
-        rec.lang = 'bg-BG';
 
-        rec.onstart = () => {
-            statusEl.textContent = "🎤 Слушам те...";
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'bg-BG';
+
+        recognition.onstart = () => {
+            statusEl.textContent = "🎤 Слушам Ви...";
         };
 
-        rec.onresult = (e) => {
-            const text = e.results[0][0].transcript.trim();
-            heardEl.textContent = text;
-            sendToGemini(text);
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            heardEl.textContent = transcript;
+            askGemini(transcript);
         };
 
-        rec.onerror = (event) => {
-            console.error(event.error);
-            statusEl.textContent = "Опа, не те чух. Пробвай пак!";
+        recognition.onerror = () => {
+            statusEl.textContent = "Опа, не Ви чух. Опитайте пак!";
         };
 
-        rec.start();
+        recognition.start();
     }
 
-    async function sendToGemini(userText) {
+    async function askGemini(userInput) {
         statusEl.textContent = "🤔 Вики мисли...";
 
-        const prompt = `Ти си Вики - приятна и професионална сервитьорка. 
-        ГОВОРИ САМО НА БЪЛГАРСКИ!
-        
-        МЕНЮ:
-        - Шопска салата (8.90 лв)
-        - Пилешка супа (6.50 лв)
-        - Цезар салата (11.90 лв)
-        - Пържола свинско (19.90 лв)
-        - Домашна лимонада (4.50 лв)
-
-        ИНСТРУКЦИИ:
-        1. Отговаряй кратко и любезно.
-        2. Когато някой поръча нещо, потвърди поръчката.
-        3. СЛЕД ВСЯКА ПОРЪЧКА питай "Желаете ли още нещо или някой друг на масата иска да поръча?".
-        4. САМО ако клиентът каже, че това е всичко, кажи "Благодаря! Поръчката е приета и изпратена!".
-
-        Клиентът каза: "${userText}"`;
+        const payload = {
+            contents: [{
+                parts: [{ text: systemPrompt + "\nКлиентът каза: " + userInput }]
+            }]
+        };
 
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+            const response = await fetch(MODEL_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
+                body: JSON.stringify(payload)
             });
 
-            const data = await res.json();
-            
+            const data = await response.json();
+
             if (data.error) {
-                throw new Error(data.error.message);
+                console.error("Грешка от Google:", data.error.message);
+                responseEl.textContent = "Извинявайте, имам проблем с връзката към кухнята. (Проверете API ключа)";
+                return;
             }
 
-            const answer = data.candidates[0].content.parts[0].text.trim();
-            responseEl.textContent = answer;
-            statusEl.textContent = "Вики отговори:";
-            speak(answer);
+            if (data.candidates && data.candidates[0].content) {
+                const aiText = data.candidates[0].content.parts[0].text;
+                responseEl.textContent = aiText;
+                statusEl.textContent = "Вики отговори:";
+                speak(aiText);
+            }
 
-        } catch (err) {
-            console.error(err);
-            responseEl.textContent = "Извинявай, имам проблем с връзката. Може ли да повториш?";
-            statusEl.textContent = "Грешка!";
+        } catch (error) {
+            console.error("Грешка при заявката:", error);
+            responseEl.textContent = "Имам малък технически проблем. Може ли да повторите?";
         }
     }
 
     function speak(text) {
+        const synth = window.speechSynthesis;
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'bg-BG';
         
-        // Автоматично пуска слушането отново след като Вики свърши да говори
+        // Автоматично пускане на микрофона след края на говоренето
         utterance.onend = () => {
             setTimeout(startListening, 1000);
         };
-        
-        window.speechSynthesis.speak(utterance);
+
+        synth.speak(utterance);
     }
 </script>
+
 </body>
 </html>
